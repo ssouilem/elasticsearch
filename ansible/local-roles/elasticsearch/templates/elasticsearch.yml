@@ -1,0 +1,11 @@
+cluster.name: dops-cluster
+node.name: {{ansible_hostname}}
+path.data: /var/lib/elasticsearch
+discovery.type: ec2
+cloud.aws.region: {{region}}
+network.host: _ec2_
+
+discovery.zen.minimum_master_nodes: 2
+discovery.zen.ping_timeout: 10s
+
+script.engine.javascript.inline.search: on

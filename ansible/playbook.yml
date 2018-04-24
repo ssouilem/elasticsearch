@@ -1,0 +1,20 @@
+# Playbook : 15-mongodb.yml
+# Objectifs : Installation d'une plateforme mongodb
+# Inventaire à utiliser : Dynamique AWS ec2.py
+
+# Périmètre : groupe tag_roles_mongodb
+---
+- name: Install elasticsearch
+  hosts: tag_roles_elasticsearch-nodes
+  become: yes
+  vars_files:
+  - ../variables.json
+  vars:
+    env: "{{ lookup('env','Env') }}"
+    workspace: "{{ lookup('env','CI_COMMIT_REF_NAME') }}"
+  roles:
+    - { role: system }
+    - { role: ntp-client }
+    - { role: rsyslog-client }
+    - { role: "local-roles/elasticsearch",region: "{{Region[workspace]}}" }
+    - { role: awsinstaller }

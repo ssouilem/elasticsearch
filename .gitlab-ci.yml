@@ -1,0 +1,138 @@
+# see https://docs.gitlab.com/ce/ci/yaml/README.html for all available options
+
+# you can delete this line if you're not using Docker
+image: gitlab:82/dops/common/docker-images/dops
+
+before_script:
+  - export AWS_REGION=`jq --arg branch $CI_COMMIT_REF_NAME '.Region[$branch]' -r variables.json`
+  - export BASTION=`jq --arg branch $CI_COMMIT_REF_NAME '.Bastion[$branch]' -r variables.json`
+  - test "$CI_COMMIT_REF_NAME" = "master" && export Env=Prod || export Env=Dev
+  - test "$CI_COMMIT_REF_NAME" = "paris" && export Env=Prod
+  - mkdir -p $HOME/.ssh/
+  - export ANSIBLE_HOST_KEY_CHECKING=False
+  - echo "$SSH_KEY"| sed 's/\r$//' | base64 -d > $HOME/.ssh/claptrap.pem && chmod 600 $HOME/.ssh/claptrap.pem
+  - echo "$DOPS_KEY"| sed 's/\r$//' | base64 -d > $HOME/.ssh/dops.pem && chmod 600 $HOME/.ssh/dops.pem
+  - cd terraform && /terraform init -input=false -plugin-dir=/usr/lib/terraform-plugins
+  - /terraform workspace list | grep -w $CI_COMMIT_REF_NAME ||  /terraform workspace new $CI_COMMIT_REF_NAME
+  - /terraform workspace select $CI_COMMIT_REF_NAME
+  - cd ..
+
+stages:
+  - validate
+  - plan
+  - terraform
+  - ansible
+  - destroy
+
+S3 check:
+  stage: validate
+  script:
+    - cd terraform
+    - bname=$CI_PROJECT_NAME
+    - echo "project is $bname"
+    - bname=${bname#"terraform-"}
+    - echo "bucket should be declared as $bname/terraform.tfstate... checking"
+    - if grep -q $bname 01-provider.tf; then echo "ok" && exit 0; else echo "wrong bucket name, please fix it in '01 - provider.tf'" && exit 1; fi
+
+
+TF Validate:
+  stage: validate
+  script:
+    - cd terraform
+    - /terraform validate -var-file=../variables.json -input=false
+
+TF Plan:
+  stage: plan
+  script:
+    - cd terraform
+    - /terraform plan -var-file=../variables.json -input=false
+
+TF Apply Dev:
+  stage: terraform
+  script:
+    - cd terraform
+    - /terraform apply -auto-approve -var-file=../variables.json -input=false
+  only:
+    - dev
+  environment:
+    name: dev
+    on_stop: Kill dev
+
+TF Apply Prod:
+  stage: terraform
+  script:
+    - cd terraform
+    - /terraform apply -auto-approve -var-file=../variables.json -input=false
+  when: manual
+  only:
+    - master
+  environment:
+    name: prod
+
+TF Apply Paris:
+  stage: terraform
+  script:
+    - cd terraform
+    - /terraform apply -auto-approve -var-file=../variables.json -input=false
+  when: manual
+  only:
+    - paris
+  environment:
+    name: paris
+
+Kill dev:
+  stage: destroy
+  script:
+    - cd terraform
+    - /terraform destroy -force -var-file=../variables.json
+  when: manual
+  only:
+    - dev
+  except:
+    - schedules
+  environment:
+    name: dev
+    action: stop
+
+Ansible_check:
+ variables:
+   GIT_SUBMODULE_STRATEGY: recursive
+ stage: validate
+ script:
+    - git submodule sync
+    - git submodule update --init --remote
+    - cd ansible
+    - echo $ANSIBLE_VAULT_PW > vault.txt
+    - ansible-playbook --syntax-check -i ec2.py playbook.yml
+    - rm vault.txt
+
+Ansible Dev:
+ variables:
+   GIT_SUBMODULE_STRATEGY: recursive
+ stage: ansible
+ script:
+    - git submodule sync
+    - git submodule update --init --remote
+    - cd ansible
+    - echo $ANSIBLE_VAULT_PW > vault.txt
+    - ansible-playbook -i ec2.py --vault-password-file vault.txt playbook.yml
+    - rm vault.txt
+ only:
+    - dev
+
+Ansible Prod:
+ variables:
+   GIT_SUBMODULE_STRATEGY: recursive
+ stage: ansible
+ script:
+    - git submodule sync
+    - git submodule update --init --remote
+    - cd ansible
+    - echo $ANSIBLE_VAULT_PW > vault.txt
+    - ansible-playbook -i ec2.py --vault-password-file vault.txt playbook.yml
+    - rm vault.txt
+ only:
+    - master
+    - paris
+ when: manual
+

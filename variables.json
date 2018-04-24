@@ -1,0 +1,54 @@
+{
+   "Domaine": {
+      "dev" : "dops",
+      "master": "dops",
+      "paris": "boost"},
+   "Env": {
+      "dev":"Dev",
+      "master":"Prod",
+      "paris":"Prod"},
+   "Roles": {
+      "dev":"elasticsearch-nodes",
+      "master":"elasticsearch-nodes",
+      "paris":"elasticsearch-nodes"},
+   "Projet": {
+      "dev":"elasticsearch",
+      "master":"elasticsearch",
+      "paris":"elasticsearch"},
+   "Bastion": {
+      "dev": "helm-dev.dops.open.global",
+      "master": "helm.dops.open.global",
+      "paris": "bastille.dops.open.global"},
+   "Region" : {
+      "dev" : "eu-central-1",
+      "master" : "eu-west-1",
+      "paris" : "eu-west-3"},
+   "VMSize" : {
+      "dev":"t2.medium",
+      "master":"t2.medium",
+      "paris":"t2.medium"},
+   "Nameint": {
+      "dev":"elasticsearch-dev",
+      "master":"elasticsearch-prod",
+      "paris":"elasticsearch-prod"},
+   "DnsZoneName" : {
+      "dev" : "dopsdev.internal",
+      "master" : "dops.internal",
+      "paris" : "boost.internal"},
+   "Alwayson": {
+      "dev": "false",
+      "master": "true",
+      "paris": "true"},
+   "Monitored": {
+      "dev": "no",
+      "master": "yes",
+      "paris": "yes"},
+   "Patch": {
+      "dev": "yes",
+      "master": "yes",
+      "paris": "yes"},
+   "DopsInstancePolicyArn": {
+      "dev": "arn:aws:iam::765789996896:policy/DOPSDevPolicyForEC2Instances",
+      "master": "arn:aws:iam::765789996896:policy/DOPSProdPolicyForEC2Instances",
+      "paris": "arn:aws:iam::765789996896:policy/BOOSTProdPolicyForEC2Instances"}
+}
